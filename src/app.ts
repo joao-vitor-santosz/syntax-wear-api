@@ -5,7 +5,9 @@ import Fastify from "fastify";
 import "dotenv/config";
 import cors from "@fastify/cors";
 import helmet from "@fastify/helmet";
-import { productRoutes } from "./routes/products.routes";
+import { productRoutes } from "./routes/products.routes.js";
+import swagger from "@fastify/swagger";
+import scalar from "@scalar/fastify-api-reference";
 
 const PORT = parseInt(process.env.PORT ?? "3000");
 
@@ -14,31 +16,66 @@ const fastify = Fastify({
 });
 
 fastify.register(cors, {
-    origin: true,
-    credentials: true,
+  origin: true,
+  credentials: true,
 });
 
 fastify.register(helmet, {
-    contentSecurityPolicy: false,
+  contentSecurityPolicy: false,
 });
 
-fastify.register(productRoutes, { prefix: '/products'});
+fastify.register(swagger, {
+  openapi: {
+    openapi: "3.0.0",
+    info: {
+      title: "Syntax Wear API",
+      description: "API para o e-commerce Syntax Wear",
+      version: "1.0.0",
+    },
+    servers: [
+      {
+        url: `http://localhost:${PORT}`,
+        description: "Servidor de desenvolvimento",
+      },
+    ],
+
+    components: {
+      securitySchemes: {
+        bearerAuth: {
+          type: "http",
+          scheme: "bearer",
+          bearerFormat: "JWT",
+          description: "Autenticação via token JWT",
+        },
+      },
+    },
+  },
+});
+
+fastify.register(scalar, {
+  routePrefix: "/api-docs",
+  configuration: {
+    theme: "bluePlanet",
+  },
+});
+
+fastify.register(productRoutes, { prefix: "/products" });
 
 // Declare a route
 fastify.get("/", async (request, reply) => {
   return {
-    message: 'E-commerce SyntaxWear API',
-    version: '1.0.0',
-    status: 'running',
-  }
+    message: "E-commerce SyntaxWear API",
+    version: "1.0.0",
+    status: "running",
+  };
 });
 
 fastify.get("/health", async (request, reply) => {
-    return {
-        status: 'ok',
-        timestamp: new Date().toISOString(),
-    }
-})
+  return {
+    status: "ok",
+    timestamp: new Date().toISOString(),
+  };
+});
 
 // Run the server!
 fastify.listen({ port: PORT }, function (err, address) {

@@ -1,5 +1,5 @@
-import { prisma } from "../utils/prisma";
-import { ProductFilters } from "../types/index";
+import { prisma } from "../utils/prisma.js";
+import { ProductFilters } from "../types/index.js";
 
 export const getProducts = async (filter: ProductFilters) => {
   const {

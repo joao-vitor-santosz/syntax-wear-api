@@ -19,7 +19,7 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "type": "commonjs",
+  "type": "module",
   "bugs": {
     "url": "https://github.com/joao-vitor-santosz/syntax-wear-api/issues"
   },
@@ -27,8 +27,10 @@
   "dependencies": {
     "@fastify/cors": "^11.3.0",
     "@fastify/helmet": "^13.1.1",
+    "@fastify/swagger": "^9.9.0",
     "@prisma/adapter-pg": "^7.10.0",
     "@prisma/client": "^7.10.0",
+    "@scalar/fastify-api-reference": "^1.72.0",
     "dotenv": "^17.4.2",
     "fastify": "^5.12.3",
     "pg": "^8.23.0"
