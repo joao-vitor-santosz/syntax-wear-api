@@ -20,5 +20,9 @@ export const errorHandler = (
     })
   }
 
+  if (error.statusCode && error.statusCode >= 400 && error.statusCode < 500) {
+    return reply.status(error.statusCode).send({ message: error.message });
+  }
+
   return reply.status(500).send({ message: "Erro interno do servidor" });
 };

@@ -101,7 +101,9 @@ export const createProduct = async (data: CreateProduct) => {
   });
 
   if (existingProduct) {
-    throw new Error("Slug já existe. Por favor, escolha outro slug.");
+    const error = new Error("Slug já existe. Por favor, escolha outro slug.");
+    Object.assign(error, { statusCode: 409 });
+    throw error;
   }
 
   const newProduct = await prisma.product.create({
