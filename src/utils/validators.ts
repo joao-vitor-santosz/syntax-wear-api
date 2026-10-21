@@ -33,3 +33,16 @@ export const productFiltersSchema = z
       path: ["minPrice"],
     },
   );
+
+
+  export const createProductSchema = z.object({
+    name: z.string().min(1, "Nome é obrigatório"),
+    description: z.string().min(1, "Descrição é obrigatória"),
+    price: z.number().nonnegative("Preço não pode ser negativo"),
+    slug: z.string().min(1, "Slug é obrigatório"),
+    stock: z.number().int().nonnegative("Estoque não pode ser negativo"),
+    active: z.boolean(),
+    sizes: z.array(z.string()).optional(),
+    colors: z.array(z.string()).optional(),
+    images: z.array(z.string()).optional(),
+  });
