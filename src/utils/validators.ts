@@ -46,3 +46,15 @@ export const productFiltersSchema = z
     colors: z.array(z.string()).optional(),
     images: z.array(z.string()).optional(),
   });
+
+  export const updateProductSchema = z.object({
+    name: z.string().min(1, "Nome é obrigatório").optional(),
+    description: z.string().min(1, "Descrição é obrigatória").optional(),
+    price: z.number().nonnegative("Preço não pode ser negativo").optional(),
+    slug: z.string().min(1, "Slug é obrigatório").optional(),
+    stock: z.number().int().nonnegative("Estoque não pode ser negativo").optional(),
+    active: z.boolean().optional(),
+    sizes: z.array(z.string()).optional(),
+    colors: z.array(z.string()).optional(),
+    images: z.array(z.string()).optional(),
+  });
