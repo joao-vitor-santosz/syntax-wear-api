@@ -3,11 +3,12 @@ import {
   createNewProduct,
   getProduct,
   listProducts,
+  updateExistingProduct,
 } from "../controllers/products.controller.js";
 import { authenticate } from "../middlewares/auth.middleware.js";
 
 export async function productRoutes(fastify: FastifyInstance) {
-  // fastify.addHook("onRequest", authenticate);
+  fastify.addHook("onRequest", authenticate);
   fastify.get(
     "/",
     {
@@ -197,5 +198,96 @@ export async function productRoutes(fastify: FastifyInstance) {
       },
     },
     createNewProduct,
+  );
+
+  fastify.put(
+    "/:id",
+    {
+      schema: {
+        tags: ["Products"],
+        description: "Atualizar produto",
+        security: [{ bearerAuth: [] }],
+        params: {
+          type: "object",
+          properties: {
+            id: { type: "string", description: "ID do produto a ser atualizado" },
+          },
+          required: ["id"],
+        },
+        body: {
+          type: "object",
+          properties: {
+            name: { type: "string" },
+            description: { type: "string" },
+            price: { type: "number" },
+            stock: { type: "number" },
+            active: { type: "boolean" },
+            sizes: {
+              type: "array",
+              items: { type: "string" },
+            },
+            colors: {
+              type: "array",
+              items: { type: "string" },
+            },
+            images: {
+              type: "array",
+              items: { type: "string" },
+            },
+          },
+        },
+        responses: {
+          200: {
+            description: "Produto atualizado com sucesso",
+            type: "object",
+            properties: {
+              id: { type: "string" },
+              name: { type: "string" },
+              description : { type: "string", nullable: true },
+              price: { type: "number" },
+              colors: {
+                type: "array",
+                nullable: true,
+                items: { type: "string" },
+              },
+              stock: { type: "number" },
+              tags: {
+                type: "array",
+                nullable: true,
+                items: { type: "string" },
+              },
+              createdAt: { type: "string", format: "date-time" },
+              updatedAt: { type: "string", format: "date-time" },
+            },
+          },
+          400: {
+            description: "ID do produto inválido",
+            type: "object",
+            properties: {
+              error: { type: "string" },
+              details: {
+                type: "array",
+                nullable: true,
+              },
+            },
+          },
+          401: {
+            description: "Não autorizado",
+            type: "object",
+            properties: {
+              error: { type: "string" },
+            },
+          },
+          404: {
+            description: "Produto não encontrado",
+            type: "object",
+            properties: {
+              error: { type: "string" },
+            },
+          },
+        },
+      },
+    },
+    updateExistingProduct,
   );
 }
