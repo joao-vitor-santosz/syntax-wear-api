@@ -58,3 +58,7 @@ export const productFiltersSchema = z
     colors: z.array(z.string()).optional(),
     images: z.array(z.string()).optional(),
   });
+
+  export const deleteProductSchema = z.object({
+    id: z.number().int().nonnegative("ID não pode ser negativo"),
+  });

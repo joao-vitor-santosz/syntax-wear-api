@@ -1,5 +1,9 @@
 import { prisma } from "../utils/prisma.js";
-import { CreateProduct, ProductFilters, UpdateProduct } from "../types/index.js";
+import {
+  CreateProduct,
+  ProductFilters,
+  UpdateProduct,
+} from "../types/index.js";
 
 export const getProducts = async (filter: ProductFilters) => {
   const {
@@ -95,7 +99,6 @@ export const getProductById = async (id: number) => {
 };
 
 export const createProduct = async (data: CreateProduct) => {
-
   const existingProduct = await prisma.product.findUnique({
     where: { slug: data.slug },
   });
@@ -110,10 +113,9 @@ export const createProduct = async (data: CreateProduct) => {
     data,
   });
   return newProduct;
-}
+};
 
 export const updateProduct = async (id: number, data: UpdateProduct) => {
-
   const existingProduct = await prisma.product.findUnique({
     where: { id },
   });
@@ -124,13 +126,15 @@ export const updateProduct = async (id: number, data: UpdateProduct) => {
     throw error;
   }
 
-  if(data.slug){
+  if (data.slug) {
     const slugExists = await prisma.product.findUnique({
       where: { slug: data.slug },
     });
 
     if (slugExists && slugExists.id !== id) {
-      const error = new Error("Slug já existe. Por favor, escolha outro nome para o produto.");
+      const error = new Error(
+        "Slug já existe. Por favor, escolha outro nome para o produto.",
+      );
       Object.assign(error, { statusCode: 409 });
       throw error;
     }
@@ -141,4 +145,20 @@ export const updateProduct = async (id: number, data: UpdateProduct) => {
     data,
   });
   return updatedProduct;
-}
+};
+
+export const deleteProduct = async (id: number) => {
+  const existingProduct = await prisma.product.findUnique({
+    where: { id },
+  });
+  if (!existingProduct) {
+    const error = new Error("Produto não encontrado");
+    Object.assign(error, { statusCode: 404 });
+    throw error;
+  }
+
+  await prisma.product.update({
+    where: { id },
+    data: { active: false },
+  });
+};
