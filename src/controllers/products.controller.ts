@@ -43,6 +43,14 @@ export const updateExistingProduct = async (request: FastifyRequest<{ Params: { 
 
   const validate = updateProductSchema.parse(body);
 
+  if (validate.name) {
+    validate.slug = slugify(validate.name, {
+      lower: true,
+      strict: true,
+      locale: "pt",
+    });
+  }
+
   const product = await updateProduct(Number(id), validate);
   reply.status(200).send(product);
 }
