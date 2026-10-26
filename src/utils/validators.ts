@@ -24,6 +24,7 @@ export const productFiltersSchema = z
     search: z.string().optional(),
     sortBy: z.enum(["price", "name", "createdAt"]).optional(),
     sortOrder: z.enum(["asc", "desc"]).optional(),
+    categoryId: z.coerce.number().int().min(1, "ID da categoria deve ser no mínimo 1").optional(),
   })
   .refine(
     ({ minPrice, maxPrice }) =>
@@ -33,6 +34,12 @@ export const productFiltersSchema = z
       path: ["minPrice"],
     },
   );
+
+export const categoryFiltersSchema = z.object({
+  page: z.coerce.number().int().min(1, "Página deve ser no mínimo 1").optional(),
+  limit: z.coerce.number().int().min(1, "Limite deve ser no mínimo 1").optional(),
+  search: z.string().optional(),
+});
 
 
   export const createProductSchema = z.object({
@@ -45,6 +52,7 @@ export const productFiltersSchema = z
     sizes: z.array(z.string()).optional(),
     colors: z.array(z.string()).optional(),
     images: z.array(z.string()).optional(),
+    categoryId: z.number().int().nonnegative("ID da categoria não pode ser negativo"),
   });
 
   export const updateProductSchema = z.object({
@@ -54,6 +62,7 @@ export const productFiltersSchema = z
     slug: z.string().min(1, "Slug é obrigatório").optional(),
     stock: z.number().int().nonnegative("Estoque não pode ser negativo").optional(),
     active: z.boolean().optional(),
+    categoryId: z.number().int().min(1, "ID da categoria deve ser no mínimo 1").optional(),
     sizes: z.array(z.string()).optional(),
     colors: z.array(z.string()).optional(),
     images: z.array(z.string()).optional(),

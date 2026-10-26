@@ -1,0 +1,113 @@
+import { FastifyInstance } from "fastify";
+import {
+  getCategory,
+  listCategories,
+} from "../controllers/categories.controller.js";
+import { authenticate } from "../middlewares/auth.middleware.js";
+
+export async function categoryRoutes(fastify: FastifyInstance) {
+  fastify.addHook("onRequest", authenticate);
+  fastify.get(
+    "/",
+    {
+      schema: {
+        tags: ["Categories"],
+        description: "Lista as categorias ativas",
+        querystring: {
+          type: "object",
+          properties: {
+            page: { type: "number", minimum: 1 },
+            limit: { type: "number", minimum: 1 },
+            search: { type: "string" },
+          },
+        },
+        responses: {
+          200: {
+            description: "Lista de categorias",
+            type: "object",
+            properties: {
+              categories: {
+                type: "array",
+                items: {
+                  type: "object",
+                  properties: {
+                    id: { type: "number" },
+                    name: { type: "string" },
+                    slug: { type: "string" },
+                    description: { type: "string", nullable: true },
+                    active: { type: "boolean" },
+                    createdAt: { type: "string", format: "date-time" },
+                    updatedAt: { type: "string", format: "date-time" },
+                  },
+                },
+              },
+              total: { type: "number" },
+              page: { type: "number" },
+              limit: { type: "number" },
+              totalPages: { type: "number" },
+            },
+          },
+          400: {
+            description: "Parâmetros de busca inválidos",
+            type: "object",
+            properties: {
+              message: { type: "string" },
+              errors: {
+                type: "object",
+                additionalProperties: true,
+              },
+            },
+          },
+        },
+      },
+    },
+    listCategories,
+  );
+
+  fastify.get(
+    "/:id",
+    {
+      schema: {
+        tags: ["Categories"],
+        description: "Obtém uma categoria específica pelo ID",
+        params: {
+          type: "object",
+          properties: {
+            id: { type: "number" },
+          },
+          required: ["id"],
+        },
+        responses: {
+          200: {
+            description: "Categoria encontrada",
+            type: "object",
+            properties: {
+              id: { type: "number" },
+              name: { type: "string" },
+              slug: { type: "string" },
+              description: { type: "string", nullable: true },
+              active: { type: "boolean" },
+              createdAt: { type: "string", format: "date-time" },
+              updatedAt: { type: "string", format: "date-time" },
+            },
+          },
+          400: {
+            description: "ID da categoria inválido",
+            type: "object",
+            properties: {
+              message: { type: "string" },
+            },
+          },
+          404: {
+            description: "Categoria não encontrada",
+            type: "object",
+            properties: {
+              message: { type: "string" },
+            },
+          },
+        },
+      },
+    },
+    getCategory,
+  );
+}

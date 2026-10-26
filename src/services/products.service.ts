@@ -12,11 +12,17 @@ export const getProducts = async (filter: ProductFilters) => {
     minPrice,
     maxPrice,
     search,
+    categoryId,
     sortBy,
     sortOrder,
   } = filter;
 
   const where: any = {};
+
+  // Filtro por categoria
+  if (categoryId) {
+    where.categoryId = categoryId;
+  }
 
   // Filtro por preço
   if (minPrice !== undefined || maxPrice !== undefined) {
@@ -88,6 +94,9 @@ export const getProductById = async (id: number) => {
   try {
     const product = await prisma.product.findUnique({
       where: { id },
+      include: {
+        category: true,
+      },
     });
     if (!product) {
       throw new Error("Produto não encontrado");

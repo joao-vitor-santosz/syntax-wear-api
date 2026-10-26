@@ -10,6 +10,7 @@ import swagger from "@fastify/swagger";
 import scalar from "@scalar/fastify-api-reference";
 import jwt from "@fastify/jwt";
 import { authRoutes } from "./routes/auth.routes.js";
+import { categoryRoutes } from "./routes/categories.routes.js";
 import { errorHandler } from "./middlewares/error.middleware.js";
 
 const PORT = parseInt(process.env.PORT ?? "3000");
@@ -69,6 +70,7 @@ fastify.register(scalar, {
 });
 
 fastify.register(productRoutes, { prefix: "/products" });
+fastify.register(categoryRoutes, { prefix: "/categories" });
 fastify.register(authRoutes, { prefix: "/auth" });
 
 // Declare a route

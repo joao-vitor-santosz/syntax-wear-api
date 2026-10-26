@@ -1,5 +1,5 @@
 import { FastifyReply, FastifyRequest } from "fastify";
-import { CreateProduct, ProductFilters } from "../types/index.js";
+import { CreateProduct, ProductFilters, UpdateProduct } from "../types/index.js";
 import { createProduct, deleteProduct, getProductById, getProducts, updateProduct } from "../services/products.service.js";
 import { createProductSchema, deleteProductSchema, productFiltersSchema, updateProductSchema } from "../utils/validators.js";
 import slugify from "slugify";
@@ -37,7 +37,7 @@ export const createNewProduct = async (request: FastifyRequest<{ Body: CreatePro
   reply.status(201).send({ message: "Produto criado com sucesso" });
 }
 
-export const updateExistingProduct = async (request: FastifyRequest<{ Params: { id: string }; Body: Partial<CreateProduct> }>, reply: FastifyReply) => {
+export const updateExistingProduct = async (request: FastifyRequest<{ Params: { id: string }; Body: UpdateProduct }>, reply: FastifyReply) => {
   const { id } = request.params;
   const body = request.body;
 
@@ -61,5 +61,5 @@ export const deleteExistingProduct = async (request: FastifyRequest<{ Params: { 
   const validate = deleteProductSchema.parse({ id });
 
   await deleteProduct(validate.id);
-  reply.status(200).send({ message: "Produto deletado com sucesso" });
+  reply.status(204)
 }

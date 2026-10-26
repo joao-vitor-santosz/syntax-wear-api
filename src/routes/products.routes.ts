@@ -62,6 +62,19 @@ export async function productRoutes(fastify: FastifyInstance) {
                     active: { type: "boolean" },
                     createdAt: { type: "string", format: "date-time" },
                     updatedAt: { type: "string", format: "date-time" },
+                    categoryId: { type: "number" },
+                    category: {
+                      type: "object",
+                      properties: {
+                        id: { type: "number" },
+                        name: { type: "string" },
+                        slug: { type: "string" },
+                        description: { type: "string", nullable: true },
+                        active: { type: "boolean" },
+                        createdAt: { type: "string", format: "date-time" },
+                        updatedAt: { type: "string", format: "date-time" },
+                      },
+                    },
                   },
                 },
               },
@@ -154,6 +167,7 @@ export async function productRoutes(fastify: FastifyInstance) {
             price: { type: "number" },
             stock: { type: "number" },
             active: { type: "boolean" },
+            categoryId: { type: "number", description: "ID da categoria do produto" },
             sizes: {
               type: "array",
               items: { type: "string" },
@@ -167,7 +181,7 @@ export async function productRoutes(fastify: FastifyInstance) {
               items: { type: "string" },
             },
           },
-          required: ["name", "description", "price", "active", "stock"],
+          required: ["name", "description", "price", "active", "stock", "categoryId"],
         },
         responses: {
           201: {
@@ -223,6 +237,11 @@ export async function productRoutes(fastify: FastifyInstance) {
             price: { type: "number" },
             stock: { type: "number" },
             active: { type: "boolean" },
+            categoryId: {
+              type: "integer",
+              minimum: 1,
+              description: "ID da categoria do produto",
+            },
             sizes: {
               type: "array",
               items: { type: "string" },
@@ -252,6 +271,7 @@ export async function productRoutes(fastify: FastifyInstance) {
                 items: { type: "string" },
               },
               stock: { type: "number" },
+              categoryId: { type: "integer", nullable: true },
               tags: {
                 type: "array",
                 nullable: true,
@@ -307,7 +327,7 @@ export async function productRoutes(fastify: FastifyInstance) {
           required: ["id"],
         },
         responses: {
-          200: {
+          204: {
             description: "Produto deletado com sucesso",
             type: "object",
             properties: {
