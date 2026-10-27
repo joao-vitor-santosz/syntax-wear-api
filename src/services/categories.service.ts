@@ -1,4 +1,5 @@
-import type { CategoryFilters } from "../types/index.js";
+import type { CategoryFilters, CreateCategory } from "../types/index.js";
+import { Prisma } from "@prisma/client";
 import { prisma } from "../utils/prisma.js";
 
 export const getCategories = async (filters: CategoryFilters) => {
@@ -60,6 +61,39 @@ export const getCategoryById = async (id: number) => {
 
   } catch (error) {
     console.error("Erro ao buscar categoria:", error);
+    throw error;
+  }
+};
+
+export const createCategory = async (data: CreateCategory) => {
+  try {
+    const existingCategory = await prisma.category.findUnique({
+      where: { slug: data.slug },
+    });
+
+    if (existingCategory) {
+      const error = new Error("Slug já existe. Por favor, escolha outro slug.");
+      Object.assign(error, { statusCode: 409 });
+      throw error;
+    }
+
+    return await prisma.category.create({
+      data,
+    });
+  } catch (error) {
+    console.error("Erro ao criar categoria:", error);
+
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === "P2002"
+    ) {
+      const conflictError = new Error(
+        "Slug já existe. Por favor, escolha outro slug.",
+      );
+      Object.assign(conflictError, { statusCode: 409 });
+      throw conflictError;
+    }
+
     throw error;
   }
 };

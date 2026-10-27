@@ -41,6 +41,12 @@ export const categoryFiltersSchema = z.object({
   search: z.string().optional(),
 });
 
+export const createCategorySchema = z.object({
+  name: z.string().min(1, "Nome é obrigatório"),
+  slug: z.string().min(1, "Slug é obrigatório"),
+  description: z.string().optional(),
+  active: z.boolean()
+});
 
   export const createProductSchema = z.object({
     name: z.string().min(1, "Nome é obrigatório"),

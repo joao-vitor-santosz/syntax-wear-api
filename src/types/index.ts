@@ -10,9 +10,16 @@ export interface ProductFilters {
 }
 
 export interface CategoryFilters {
-page?: number;
-limit?: number;
-search?: string;
+  page?: number;
+  limit?: number;
+  search?: string;
+}
+
+export interface CreateCategory {
+  name: string;
+  slug: string;
+  description?: string;
+  active: boolean;
 }
 
 export interface AuthRequest {
