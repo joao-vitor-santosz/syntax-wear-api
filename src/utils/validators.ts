@@ -48,6 +48,17 @@ export const createCategorySchema = z.object({
   active: z.boolean()
 });
 
+export const updateCategorySchema = z.object({
+  name: z.string().min(1, "Nome é obrigatório").optional(),
+  slug: z.string().min(1, "Slug é obrigatório").optional(),
+  description: z.string().optional(),
+  active: z.boolean().optional(),
+});
+
+export const deleteCategorySchema = z.object({
+  id: z.number().int().min(1, "ID da categoria deve ser maior que zero"),
+});
+
   export const createProductSchema = z.object({
     name: z.string().min(1, "Nome é obrigatório"),
     description: z.string().min(1, "Descrição é obrigatória"),
