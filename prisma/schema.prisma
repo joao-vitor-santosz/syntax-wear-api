@@ -18,6 +18,7 @@ model User {
   createdAt       DateTime   @default(now())
   updatedAt       DateTime   @updatedAt
   role            Role       @default(USER)
+  orders          Order[]
 
   @@map("users")
 }
@@ -55,6 +56,46 @@ model Product {
   createdAt  DateTime  @default(now())
   updatedAt  DateTime  @updatedAt
   category   Category? @relation(fields: [categoryId], references: [id])
+  orderItems OrderItem[]
 
   @@map("products")
+}
+
+model Order {
+  id              Int         @id @default(autoincrement())
+  userId          Int?
+  user            User?       @relation(fields: [userId], references: [id])
+  total           Decimal
+  status          OrderStatus @default(PENDING)
+  shippingAddress Json
+  paymentMethod   String
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+  items           OrderItem[]
+
+  @@map("orders")
+}
+
+model OrderItem {
+  id        Int      @id @default(autoincrement())
+  orderId   Int
+  order     Order    @relation(fields: [orderId], references: [id])
+  productId Int
+  product   Product  @relation(fields: [productId], references: [id])
+  price     Decimal
+  quantity  Int
+  size      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("order_items")
+}
+
+
+enum OrderStatus {
+  PENDING
+  PAID
+  SHIPPED
+  DELIVERED
+  CANCELLED
 }
