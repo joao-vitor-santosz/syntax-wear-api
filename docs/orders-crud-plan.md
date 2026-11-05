@@ -1,79 +1,100 @@
 # Planejamento: CRUD de pedidos integrado a produtos
 
-Este documento descreve o planejamento para implementar pedidos na API Syntax Wear, integrados aos produtos já existentes. É somente um plano: nenhuma parte do CRUD, schema ou integração está implementada por este documento.
+Este documento registra o estado atual dos pedidos na API Syntax Wear e planeja o trabalho que ainda falta para completar seu CRUD. O schema básico e sua migração já existem, assim como os endpoints de listagem e consulta por ID. Criação, cancelamento e operações administrativas ainda não estão implementados.
 
-O planejamento considera os requisitos de pedidos descritos no [PRD](./PRD.md) e as convenções do projeto.
+O planejamento considera os requisitos de pedidos descritos no [PRD](./PRD.md), o schema Prisma atual e as convenções do projeto.
+
+## Estado atual do projeto
+
+- `Order`, `OrderItem` e o enum `OrderStatus` já estão definidos em `prisma/schema.prisma`. A migração `20261028042528_add_order_order_item` também já criou as tabelas e o enum no banco.
+- `Order` possui `id`, `userId` opcional, `total` como `Decimal`, `status`, endereço em `Json`, `paymentMethod` obrigatório e datas de criação e atualização.
+- `OrderItem` possui relações obrigatórias com pedido e produto, `price` como `Decimal`, `quantity` e `size` opcional. Não há snapshots comerciais do produto nem total da linha armazenados.
+- O produto possui um único campo `stock` inteiro. `sizes` e `colors` são dados JSON, sem estoque individual por variação.
+- `GET /orders` e `GET /orders/:id` estão implementados em `src/routes/orders.routes.ts`, `src/controllers/orders.controller.ts` e `src/services/orders.service.ts`, e registrados em `src/app.ts`.
+- Os dois endpoints exigem JWT e limitam as consultas ao usuário autenticado. A consulta por ID combina o ID do pedido com o `userId` do token e retorna 404 quando não encontra pedido próprio.
+- A listagem aceita paginação (`page`, `limit`), status e intervalo de datas (`startDate`, `endDate`). Também aceita `userId` como filtro adicional, mas esse filtro não permite consultar pedidos de outros usuários.
+- As consultas incluem os itens do pedido. Ainda não existem criação, cancelamento, autorização administrativa, criação transacional, reserva/devolução de estoque ou proteção dos dados históricos por snapshots.
+- O enum já contém `PENDING`, `PAID`, `SHIPPED`, `DELIVERED` e `CANCELLED`. Sua existência não implementa, por si só, as transições de status.
+- O projeto tem `npm run build` e scripts do Prisma, mas ainda não declara Vitest nem script de testes no `package.json`.
+
+As diferenças entre o schema atual e o modelo desejado precisam ser tratadas como evolução do schema, não como criação inicial dos modelos. A política de estoque por variação também precisa ser compatibilizada com o catálogo atual antes de ser incluída.
 
 ## Escopo proposto
 
-O primeiro incremento deve permitir criar e consultar pedidos associados aos produtos existentes e ao usuário autenticado. Compra como convidado não será permitida. As operações dos clientes devem ser separadas das operações administrativas.
+O incremento atual de consulta está implementado para listar e buscar pedidos próprios. O trabalho seguinte deve implementar a criação e o cancelamento de pedidos associados aos produtos existentes e ao usuário autenticado. Compra como convidado não será permitida. As operações dos clientes devem ser separadas das operações administrativas.
 
 Checkout completo, carrinho e integração com provedores de pagamento podem ficar para uma etapa posterior. Não será implementado endpoint nem webhook de confirmação de pagamento neste incremento.
 
-## 1. Schema Prisma
+## 1. Adequação do schema Prisma
 
-Adicionar os modelos e relações necessários:
+Os modelos `Order`, `OrderItem` e o enum `OrderStatus` já existem. Evoluir o schema e criar novas migrações somente para as diferenças aprovadas:
 
-- `Order`: número único do pedido, usuário obrigatório, status, valores monetários em centavos, moeda, endereço de entrega em snapshot e datas relevantes.
-- `OrderItem`: quantidade, preço unitário e total em centavos para cada item.
-- Relação opcional com `Product`, para preservar o histórico do pedido mesmo se o produto for removido ou desativado.
-- Snapshots dos dados comerciais do produto no momento da compra, como nome, imagem, SKU e variações. Alterações posteriores no cadastro não devem modificar pedidos já criados.
-- Enum de status do pedido com os valores `PENDING`, `PAID`, `SHIPPED`, `DELIVERED` e `CANCELLED`, para limitar os estados possíveis.
+- Tornar o vínculo do pedido com `User` obrigatório, conforme a decisão de não aceitar compras como convidado. Hoje `Order.userId` e a relação `user` são opcionais.
+- Definir o identificador público único do pedido, a moeda e os valores monetários em centavos inteiros. Hoje há apenas `id` e `total Decimal` no pedido.
+- Definir no item o preço unitário e o total da linha em centavos, além de snapshots comerciais necessários, como nome, imagem, SKU e variações. Hoje `OrderItem` armazena `price Decimal`, quantidade e tamanho opcional.
+- Tornar opcional a relação de `OrderItem` com `Product`, para que o histórico do pedido sobreviva à remoção do produto. Hoje `productId` e a relação são obrigatórios e a migração usa `ON DELETE RESTRICT`.
+- Preservar endereço de entrega como snapshot. O campo `shippingAddress Json` já existe; falta definir/validar sua estrutura e garantir que os dados usados no pedido não dependam de alterações posteriores no cadastro.
+- Manter o enum atual com `PENDING`, `PAID`, `SHIPPED`, `DELIVERED` e `CANCELLED`; não recriá-lo.
+
+Snapshots devem ser gravados na criação do pedido e não devem ser alteráveis por endpoints comuns. A alteração de itens após a criação continua pendente de decisão.
 
 ## 2. Integração com produtos e estoque
 
 - Consultar produtos no banco durante a criação do pedido.
 - Calcular preços e totais no servidor; não confiar em preços ou totais enviados pelo cliente.
-- Validar que os produtos estão ativos e que há estoque suficiente.
+- Validar que os produtos estão ativos e que há estoque suficiente. No modelo atual, o estoque é único por produto; tamanhos e cores não têm saldo separado.
 - Preservar os snapshots dos itens mesmo quando os dados do produto forem alterados.
 - Definir regras para alterações dos itens: esta política ainda precisa ser decidida. Até lá, os snapshots devem permanecer imutáveis e os endpoints não devem permitir alterações arbitrárias nos itens após a criação.
 - Implementar transações para manter a criação do pedido e as atualizações de estoque consistentes.
 - Reservar o estoque na criação do pedido, reduzindo a quantidade disponível para outras compras. Se o pedido for cancelado, devolver ao estoque as quantidades reservadas.
 - Como não haverá confirmação automática de pagamento por endpoint ou webhook, pedidos não devem avançar automaticamente de `PENDING` para `PAID`; a forma de registrar o pagamento permanece fora deste escopo.
 
+Antes de implementar estoque por tamanho/cor, decidir se o estoque agregado atual por produto atende ao primeiro incremento ou se será necessário introduzir um modelo de variações com saldo próprio, como previsto no PRD.
+
 ## 3. Camadas da aplicação
 
-- Criar `src/services/orders.service.ts` para regras de negócio, operações Prisma e validação das transições de status.
-- Criar `src/controllers/orders.controller.ts` para validar entradas, chamar os serviços e formatar respostas HTTP.
-- Criar `src/routes/orders.routes.ts` com as rotas, schemas OpenAPI e proteção de autenticação.
-- Adicionar schemas Zod e tipos necessários nos arquivos já usados pelo projeto, seguindo os padrões existentes.
-- Registrar as novas rotas em `src/app.ts`.
-- Atualizar as relações dos modelos existentes em `prisma/schema.prisma`.
+- Os arquivos `src/services/orders.service.ts`, `src/controllers/orders.controller.ts` e `src/routes/orders.routes.ts` já implementam listagem paginada e consulta por ID. Estender esses módulos para as operações ainda pendentes, sem duplicar a estrutura existente.
+- As rotas de consulta já têm autenticação, schemas OpenAPI e validações Zod para ID e filtros da listagem. Adicionar validação somente para novos payloads/parâmetros necessários.
+- As rotas de pedidos já estão registradas em `src/app.ts` com o prefixo `/orders`.
+- Ajustar `prisma/schema.prisma` e gerar migrações apenas para as diferenças necessárias em relação aos modelos já existentes.
+- Manter autenticação nas rotas de cliente e implementar autorização explícita para `ADMIN` nas operações administrativas. O papel já existe no enum `Role`; ainda não há autorização administrativa de pedidos.
 
 ## 4. Endpoints propostos
 
 ### Cliente
 
 - `POST /orders`: criar pedido.
-- `GET /orders`: listar os pedidos do cliente autenticado.
-- `GET /orders/:id`: consultar um pedido próprio.
+- `GET /orders`: implementado; lista pedidos do usuário autenticado com paginação e filtros por status e datas. O filtro opcional `userId` permanece limitado ao usuário do token.
+- `GET /orders/:id`: implementado; consulta um pedido próprio e retorna 404 quando não encontrado para esse usuário.
 - `POST /orders/:id/cancel`: solicitar cancelamento, respeitando o status atual e as regras definidas.
 
 ### Administração
 
 - Listar pedidos com filtros.
 - Consultar pedido por ID.
-- Atualizar status operacional, validando as transições permitidas.
+- Atualizar status operacional, validando as transições permitidas. Caminhos e transições devem ser definidos antes da implementação.
 
 As consultas de clientes devem retornar somente pedidos próprios. As operações administrativas devem exigir autorização para o papel `ADMIN`.
 
 ## 5. Estoque e mudanças de produto
 
-Política escolhida:
+Política escolhida para o estoque agregado atual do produto:
 
 - Reservar o estoque ao criar o pedido. Na prática, a quantidade reservada deixa de estar disponível para novos pedidos.
 - Devolver ao estoque a quantidade reservada quando o pedido for cancelado.
 - Implementar a criação do pedido e a reserva em uma transação, evitando pedidos criados sem reserva consistente.
 
-Independentemente da política escolhida, atualizações posteriores no produto — como nome, preço, imagem ou desativação — não devem alterar os itens nem os valores históricos do pedido.
+Independentemente da política escolhida, atualizações posteriores no produto — como nome, preço, imagem ou desativação — não devem alterar os itens nem os valores históricos do pedido. Isso exige snapshots nos itens, que ainda não existem no schema atual.
 
 ## 6. Validação e testes
 
 Após a implementação, validar:
 
-- Migração e geração do Prisma.
+- Migração e geração do Prisma quando o schema for alterado; os modelos básicos e a migração inicial já existem.
 - Build TypeScript com `npm run build`.
-- Criação e consulta de pedidos.
+- Preparar Vitest e um script de testes, pois ainda não estão configurados no `package.json`.
+- Criação e cancelamento de pedidos, ainda pendentes de implementação.
+- Listagem paginada, filtros de status e datas, consulta por ID e isolamento por usuário nos endpoints já implementados.
 - Autorização: cliente acessa somente os próprios pedidos e operações administrativas exigem o papel correto.
 - Rejeição de produto inativo ou estoque insuficiente.
 - Cálculo de valores no servidor e consistência das operações transacionais.
@@ -83,7 +104,7 @@ Após a implementação, validar:
 ## Decisões já definidas
 
 - Somente usuários autenticados podem comprar; não haverá pedidos de convidados.
-- Sobre os status será umm Enum (`PENDING`, `PAID`, `SHIPPED`, `DELIVERED` e `CANCELLED`).
+- Os status serão limitados pelo enum `OrderStatus` (`PENDING`, `PAID`, `SHIPPED`, `DELIVERED` e `CANCELLED`), já existente no schema.
 - Não será implementado endpoint nem webhook de confirmação de pagamento.
 - O estoque será reservado ao criar o pedido e devolvido se ele for cancelado.
 
@@ -91,5 +112,7 @@ Após a implementação, validar:
 
 - Até qual status os itens do pedido poderão ser editados, se essa operação será permitida.
 - Quais transições administrativas entre os status serão aceitas e quem poderá executá-las, especialmente como registrar `PAID` sem confirmação automática de pagamento.
+- Se o estoque agregado atual por produto será suficiente neste incremento ou se haverá estoque por variação de tamanho/cor.
+- Os campos finais do pedido e dos itens, incluindo número público, moeda, snapshots e representação dos valores em centavos.
 
-Manter os snapshots imutáveis e permitir somente transições válidas de status após a criação do pedido. A implementação deve aguardar as decisões pendentes que alterem o comportamento ou o schema.
+Manter os snapshots imutáveis e permitir somente transições válidas de status após a criação do pedido. A listagem e a consulta por ID já estão implementadas. A criação e o cancelamento podem avançar sobre as decisões já definidas; alterações no schema e fluxos que dependam dos itens editáveis, estoque por variação ou transições administrativas devem aguardar as decisões pendentes correspondentes.

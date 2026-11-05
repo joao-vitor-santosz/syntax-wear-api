@@ -15,6 +15,15 @@ export interface CategoryFilters {
   search?: string;
 }
 
+export interface OrderFilters {
+  page?: number;
+  limit?: number;
+  status?: "PENDING" | "PAID" | "SHIPPED" | "DELIVERED" | "CANCELLED";
+  userId?: number;
+  startDate?: string;
+  endDate?: string;
+}
+
 export interface CreateCategory {
   name: string;
   slug: string;
