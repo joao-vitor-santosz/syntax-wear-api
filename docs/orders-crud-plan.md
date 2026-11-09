@@ -1,6 +1,6 @@
 # Planejamento: CRUD de pedidos integrado a produtos
 
-Este documento registra o estado atual dos pedidos na API Syntax Wear e planeja o trabalho que ainda falta para completar seu CRUD. O schema básico e sua migração já existem, assim como os endpoints de listagem, consulta por ID, criação e atualização dos dados de entrega/pagamento de pedidos pendentes. Cancelamento e operações administrativas ainda não estão implementados.
+Este documento registra o estado atual dos pedidos na API Syntax Wear e planeja o trabalho que ainda falta para completar seu CRUD. O schema básico e sua migração já existem, assim como os endpoints de listagem, consulta por ID, criação, atualização dos dados de entrega/pagamento e cancelamento de pedidos pendentes. Operações administrativas ainda não estão implementadas.
 
 O planejamento considera os requisitos de pedidos descritos no [PRD](./PRD.md), o schema Prisma atual e as convenções do projeto.
 
@@ -10,10 +10,10 @@ O planejamento considera os requisitos de pedidos descritos no [PRD](./PRD.md), 
 - `Order` possui `id`, `userId` opcional, `total` como `Decimal`, `status`, endereço em `Json`, `paymentMethod` obrigatório e datas de criação e atualização.
 - `OrderItem` possui relações obrigatórias com pedido e produto, `price` como `Decimal`, `quantity` e `size` opcional. Não há snapshots comerciais do produto nem total da linha armazenados.
 - O produto possui um único campo `stock` inteiro. `sizes` e `colors` são dados JSON, sem estoque individual por variação.
-- `GET /orders`, `GET /orders/:id`, `POST /orders` e `PUT /orders/:id` estão implementados em `src/routes/orders.routes.ts`, `src/controllers/orders.controller.ts` e `src/services/orders.service.ts`, e registrados em `src/app.ts`.
+- `GET /orders`, `GET /orders/:id`, `POST /orders`, `PUT /orders/:id` e `DELETE /orders/:id` estão implementados em `src/routes/orders.routes.ts`, `src/controllers/orders.controller.ts` e `src/services/orders.service.ts`, e registrados em `src/app.ts`.
 - Os dois endpoints exigem JWT e limitam as consultas ao usuário autenticado. A consulta por ID combina o ID do pedido com o `userId` do token e retorna 404 quando não encontra pedido próprio.
 - A listagem aceita paginação (`page`, `limit`), status e intervalo de datas (`startDate`, `endDate`). Também aceita `userId` como filtro adicional, mas esse filtro não permite consultar pedidos de outros usuários.
-- As consultas incluem os itens do pedido. A criação calcula os preços no servidor e reserva estoque em transação. O endereço exige CEP, rua, número, bairro, cidade, estado e país, com complemento opcional. O payload aceita `userId` opcional, mas deve corresponder ao usuário autenticado. O usuário pode atualizar o endereço de entrega e a forma de pagamento enquanto o pedido estiver pendente; itens e status não são editáveis. Cancelamento, autorização administrativa, devolução de estoque e snapshots comerciais ainda não existem.
+- As consultas incluem os itens do pedido. A criação calcula os preços no servidor e reserva estoque em transação; o cancelamento de pedido pendente devolve as quantidades reservadas ao estoque na mesma transação. O endereço exige CEP, rua, número, bairro, cidade, estado e país, com complemento opcional. O payload aceita `userId` opcional, mas deve corresponder ao usuário autenticado. O usuário pode atualizar o endereço de entrega e a forma de pagamento enquanto o pedido estiver pendente; itens e status não são editáveis diretamente. Autorização administrativa e snapshots comerciais ainda não existem.
 - O enum já contém `PENDING`, `PAID`, `SHIPPED`, `DELIVERED` e `CANCELLED`. Sua existência não implementa, por si só, as transições de status.
 - O projeto tem `npm run build` e scripts do Prisma, mas ainda não declara Vitest nem script de testes no `package.json`.
 
@@ -67,7 +67,7 @@ Antes de implementar estoque por tamanho/cor, decidir se o estoque agregado atua
 - `GET /orders`: implementado; lista pedidos do usuário autenticado com paginação e filtros por status e datas. O filtro opcional `userId` permanece limitado ao usuário do token.
 - `GET /orders/:id`: implementado; consulta um pedido próprio e retorna 404 quando não encontrado para esse usuário.
 - `PUT /orders/:id`: implementado; permite ao cliente atualizar qualquer subconjunto dos campos do endereço de entrega (CEP, rua, número, complemento, bairro, cidade, estado e país) e/ou forma de pagamento somente enquanto o pedido estiver `PENDING`. Campos do endereço não enviados permanecem inalterados. Os itens e o status não podem ser alterados.
-- `POST /orders/:id/cancel`: solicitar cancelamento, respeitando o status atual e as regras definidas.
+- `DELETE /orders/:id`: cancela um pedido próprio somente enquanto estiver `PENDING`, devolve o estoque reservado e preserva o registro para histórico.
 
 ### Administração
 
@@ -94,7 +94,7 @@ Após a implementação, validar:
 - Migração e geração do Prisma quando o schema for alterado; os modelos básicos e a migração inicial já existem.
 - Build TypeScript com `npm run build`.
 - Criação e atualização de pedidos implementadas; validar reserva de estoque, isolamento por usuário e restrição de atualização ao status `PENDING`.
-- Cancelamento de pedidos ainda pendente de implementação.
+- Cancelamento de pedidos pendentes implementado; validar devolução do estoque, isolamento por usuário e rejeição de status diferentes de `PENDING`.
 - Listagem paginada, filtros de status e datas, consulta por ID e isolamento por usuário nos endpoints já implementados.
 - Autorização: cliente acessa somente os próprios pedidos e operações administrativas exigem o papel correto.
 - Rejeição de produto inativo ou estoque insuficiente.

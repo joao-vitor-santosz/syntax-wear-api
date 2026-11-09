@@ -304,3 +304,61 @@ export const updateOrder = async (
     throw error;
   }
 };
+
+export const cancelOrder = async (id: number, userId: number) => {
+  try {
+    await prisma.$transaction(async (transaction) => {
+      const order = await transaction.order.findFirst({
+        where: { id, userId },
+        include: { items: true },
+      });
+
+      if (!order) {
+        const error = new Error("Pedido não encontrado");
+        Object.assign(error, { statusCode: 404 });
+        throw error;
+      }
+
+      if (order.status !== "PENDING") {
+        const error = new Error(
+          "Somente pedidos pendentes podem ser cancelados",
+        );
+        Object.assign(error, { statusCode: 409 });
+        throw error;
+      }
+
+      const cancelled = await transaction.order.updateMany({
+        where: { id, userId, status: "PENDING" },
+        data: { status: "CANCELLED" },
+      });
+
+      if (cancelled.count !== 1) {
+        const error = new Error(
+          "O pedido não está mais pendente e não pode ser cancelado",
+        );
+        Object.assign(error, { statusCode: 409 });
+        throw error;
+      }
+
+      const quantitiesByProduct = new Map<number, number>();
+      for (const item of order.items) {
+        quantitiesByProduct.set(
+          item.productId,
+          (quantitiesByProduct.get(item.productId) ?? 0) + item.quantity,
+        );
+      }
+
+      for (const [productId, quantity] of [...quantitiesByProduct].sort(
+        ([left], [right]) => left - right,
+      )) {
+        await transaction.product.update({
+          where: { id: productId },
+          data: { stock: { increment: quantity } },
+        });
+      }
+    });
+  } catch (error) {
+    console.error("Erro ao cancelar pedido:", error);
+    throw error;
+  }
+};
