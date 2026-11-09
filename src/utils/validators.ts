@@ -90,6 +90,108 @@ export const orderParamsSchema = z.object({
   id: z.coerce.number().int().min(1, "ID do pedido deve ser maior que zero"),
 });
 
+const addressNameSchema = (fieldName: string, maxLength: number) =>
+  z
+    .string()
+    .trim()
+    .min(2, `${fieldName} deve ter ao menos 2 caracteres`)
+    .max(maxLength, `${fieldName} excede o tamanho permitido`)
+    .regex(
+      /^[\p{L}\d][\p{L}\d .'’ºª/-]*$/u,
+      `${fieldName} contém caracteres inválidos`,
+    )
+    .regex(/\p{L}/u, `${fieldName} deve conter ao menos uma letra`);
+
+const shippingAddressSchema = z
+  .object({
+    cep: z
+      .string()
+      .trim()
+      .regex(/^\d{5}-?\d{3}$/, "CEP deve estar no formato 00000-000"),
+    street: addressNameSchema("Rua", 120),
+    number: z
+      .string()
+      .trim()
+      .min(1, "Número é obrigatório")
+      .max(20, "Número excede o tamanho permitido")
+      .regex(
+        /^(?:\d+[a-zA-Z]?(?:[-/]\d+[a-zA-Z]?)?|s\/n)$/i,
+        "Número deve conter um número de endereço válido",
+      ),
+    complement: z
+      .string()
+      .trim()
+      .min(1, "Complemento não pode ficar vazio")
+      .max(100, "Complemento excede o tamanho permitido")
+      .regex(
+        /^[\p{L}\d#][\p{L}\d .,ºª'’/-]*$/u,
+        "Complemento contém caracteres inválidos",
+      )
+      .optional(),
+    neighborhood: addressNameSchema("Bairro", 80),
+    city: addressNameSchema("Cidade", 80),
+    state: z
+      .string()
+      .trim()
+      .min(2, "Estado deve ter ao menos 2 caracteres")
+      .max(50, "Estado excede o tamanho permitido")
+      .regex(/^[\p{L} .'’-]+$/u, "Estado deve conter somente letras"),
+    country: z
+      .string()
+      .trim()
+      .min(2, "País deve ter ao menos 2 caracteres")
+      .max(56, "País excede o tamanho permitido")
+      .regex(/^[\p{L} .'’-]+$/u, "País deve conter somente letras"),
+  })
+  .strict();
+
+const updateShippingAddressSchema = shippingAddressSchema
+  .partial()
+  .refine((address) => Object.keys(address).length > 0, {
+    message: "Informe ao menos um campo do endereço para atualizar",
+  });
+
+export const createOrderSchema = z.object({
+  userId: z.number().int().min(1).max(2147483647).optional(),
+  items: z
+    .array(
+      z.object({
+        productId: z
+          .number()
+          .int()
+          .min(1, "ID do produto deve ser maior que zero"),
+        quantity: z
+          .number()
+          .int()
+          .min(1, "Quantidade deve ser maior que zero"),
+        size: z
+          .string()
+          .trim()
+          .regex(/^[2-5]\d$/, "Tamanho deve ser numérico, por exemplo 40")
+          .optional(),
+      }).strict(),
+    )
+    .min(1, "O pedido deve conter ao menos um item"),
+  shippingAddress: shippingAddressSchema,
+  paymentMethod: z.enum(["PIX", "CREDIT_CARD"], {
+    error: "Forma de pagamento deve ser PIX ou CREDIT_CARD",
+  }),
+}).strict();
+
+export const updateOrderSchema = z
+  .object({
+    shippingAddress: updateShippingAddressSchema.optional(),
+    paymentMethod: z
+      .enum(["PIX", "CREDIT_CARD"], {
+        error: "Forma de pagamento deve ser PIX ou CREDIT_CARD",
+      })
+      .optional(),
+  })
+  .strict()
+  .refine((data) => Object.keys(data).length > 0, {
+    message: "Informe ao menos um dado para atualizar",
+  });
+
 export const createCategorySchema = z.object({
   name: z.string().min(1, "Nome é obrigatório"),
   slug: z.string().min(1, "Slug é obrigatório"),

@@ -24,6 +24,37 @@ export interface OrderFilters {
   endDate?: string;
 }
 
+export interface CreateOrderItem {
+  productId: number;
+  quantity: number;
+  size?: string;
+}
+
+export interface OrderShippingAddress {
+  cep: string;
+  street: string;
+  number: string;
+  complement?: string;
+  neighborhood: string;
+  city: string;
+  state: string;
+  country: string;
+}
+
+export type OrderPaymentMethod = "PIX" | "CREDIT_CARD";
+
+export interface CreateOrder {
+  userId?: number;
+  items: CreateOrderItem[];
+  shippingAddress: OrderShippingAddress;
+  paymentMethod: OrderPaymentMethod;
+}
+
+export interface UpdateOrder {
+  shippingAddress?: Partial<OrderShippingAddress>;
+  paymentMethod?: OrderPaymentMethod;
+}
+
 export interface CreateCategory {
   name: string;
   slug: string;
