@@ -7,9 +7,19 @@ import {
   updateExistingCategory,
 } from "../controllers/categories.controller.js";
 import { authenticate } from "../middlewares/auth.middleware.js";
+import { requireAdmin } from "../middlewares/admin.middleware.js";
 
 export async function categoryRoutes(fastify: FastifyInstance) {
-  fastify.addHook("onRequest", authenticate);
+  const adminMethods = new Set(["POST", "PUT", "DELETE"]);
+  fastify.addHook("onRequest", async (request, reply) => {
+    if (!adminMethods.has(request.method)) return;
+
+    await authenticate(request, reply);
+    if (reply.sent) return;
+
+    await requireAdmin(request, reply);
+  });
+
   fastify.get(
     "/",
     {
@@ -162,6 +172,13 @@ export async function categoryRoutes(fastify: FastifyInstance) {
               message: { type: "string" },
             },
           },
+          403: {
+            description: "Acesso restrito a administradores",
+            type: "object",
+            properties: {
+              message: { type: "string" },
+            },
+          },
           409: {
             description: "Já existe uma categoria com esse slug",
             type: "object",
@@ -229,6 +246,13 @@ export async function categoryRoutes(fastify: FastifyInstance) {
               message: { type: "string" },
             },
           },
+          403: {
+            description: "Acesso restrito a administradores",
+            type: "object",
+            properties: {
+              message: { type: "string" },
+            },
+          },
           404: {
             description: "Categoria não encontrada",
             type: "object",
@@ -280,6 +304,13 @@ export async function categoryRoutes(fastify: FastifyInstance) {
           },
           401: {
             description: "Não autorizado",
+            type: "object",
+            properties: {
+              message: { type: "string" },
+            },
+          },
+          403: {
+            description: "Acesso restrito a administradores",
             type: "object",
             properties: {
               message: { type: "string" },

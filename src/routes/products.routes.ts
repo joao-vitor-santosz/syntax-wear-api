@@ -7,9 +7,19 @@ import {
   updateExistingProduct,
 } from "../controllers/products.controller.js";
 import { authenticate } from "../middlewares/auth.middleware.js";
+import { requireAdmin } from "../middlewares/admin.middleware.js";
 
 export async function productRoutes(fastify: FastifyInstance) {
-  fastify.addHook("onRequest", authenticate);
+  const adminMethods = new Set(["POST", "PUT", "DELETE"]);
+  fastify.addHook("onRequest", async (request, reply) => {
+    if (!adminMethods.has(request.method)) return;
+
+    await authenticate(request, reply);
+    if (reply.sent) return;
+
+    await requireAdmin(request, reply);
+  });
+
   fastify.get(
     "/",
     {
@@ -159,6 +169,7 @@ export async function productRoutes(fastify: FastifyInstance) {
       schema: {
         tags: ["Products"],
         description: "Cria um novo produto",
+        security: [{ bearerAuth: [] }],
         body: {
           type: "object",
           properties: {
@@ -204,6 +215,13 @@ export async function productRoutes(fastify: FastifyInstance) {
           },
           401: {
             description: "Não autorizado",
+            type: "object",
+            properties: {
+              message: { type: "string" },
+            },
+          },
+          403: {
+            description: "Acesso restrito a administradores",
             type: "object",
             properties: {
               message: { type: "string" },
@@ -299,6 +317,13 @@ export async function productRoutes(fastify: FastifyInstance) {
               error: { type: "string" },
             },
           },
+          403: {
+            description: "Acesso restrito a administradores",
+            type: "object",
+            properties: {
+              message: { type: "string" },
+            },
+          },
           404: {
             description: "Produto não encontrado",
             type: "object",
@@ -346,6 +371,13 @@ export async function productRoutes(fastify: FastifyInstance) {
             type: "object",
             properties: {
               error: { type: "string" },
+            },
+          },
+          403: {
+            description: "Acesso restrito a administradores",
+            type: "object",
+            properties: {
+              message: { type: "string" },
             },
           },
           404: {

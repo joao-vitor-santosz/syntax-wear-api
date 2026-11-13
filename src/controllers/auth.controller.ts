@@ -10,7 +10,7 @@ export const register = async (
   const validation = registerSchema.parse(request.body as RegisterRequest);
   const user = await registerUser(validation);
 
-  const token = request.server.jwt.sign({ userId: user.id });
+  const token = request.server.jwt.sign({ userId: user.id, role: user.role });
 
   reply.status(201).send({
     user,
@@ -27,7 +27,7 @@ export const login = async (
 
   const user = await loginUser(validation);
 
-  const token = request.server.jwt.sign({ userId: user.id });
+  const token = request.server.jwt.sign({ userId: user.id, role: user.role });
 
   reply.status(200).send({
     user,
