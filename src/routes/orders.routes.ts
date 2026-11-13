@@ -1,6 +1,7 @@
 import { FastifyInstance } from "fastify";
 import {
   createNewOrder,
+  deleteExistingOrder,
   getOrder,
   listOrders,
   updateExistingOrder,
@@ -371,5 +372,51 @@ export async function orderRoutes(fastify: FastifyInstance) {
       },
     },
     updateExistingOrder,
+  );
+
+  fastify.delete(
+    "/:id",
+    {
+      schema: {
+        tags: ["Orders"],
+        description:
+          "Cancela um pedido pendente do usuário autenticado e devolve os itens ao estoque",
+        security: [{ bearerAuth: [] }],
+        params: {
+          type: "object",
+          properties: { id: { type: "integer", minimum: 1 } },
+          required: ["id"],
+        },
+        responses: {
+          204: {
+            description: "Pedido cancelado com sucesso",
+          },
+          400: {
+            description: "ID do pedido inválido",
+            type: "object",
+            properties: {
+              message: { type: "string" },
+              errors: { type: "object", additionalProperties: true },
+            },
+          },
+          401: {
+            description: "Não autorizado",
+            type: "object",
+            properties: { message: { type: "string" } },
+          },
+          404: {
+            description: "Pedido não encontrado",
+            type: "object",
+            properties: { message: { type: "string" } },
+          },
+          409: {
+            description: "Somente pedidos pendentes podem ser cancelados",
+            type: "object",
+            properties: { message: { type: "string" } },
+          },
+        },
+      },
+    },
+    deleteExistingOrder,
   );
 }

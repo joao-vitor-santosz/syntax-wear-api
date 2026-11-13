@@ -5,6 +5,7 @@ import type {
   UpdateOrder,
 } from "../types/index.js";
 import {
+  cancelOrder,
   createOrder,
   getOrderById,
   getOrders,
@@ -72,4 +73,15 @@ export const updateExistingOrder = async (
   const order = await updateOrder(id, userId, body);
 
   reply.status(200).send(order);
+};
+
+export const deleteExistingOrder = async (
+  request: FastifyRequest<{ Params: { id: number } }>,
+  reply: FastifyReply,
+) => {
+  const { id } = orderParamsSchema.parse(request.params);
+  const { userId } = request.user as { userId: number };
+
+  await cancelOrder(id, userId);
+  reply.status(204).send();
 };
