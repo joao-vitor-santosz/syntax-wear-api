@@ -1,6 +1,20 @@
 import { AuthRequest, RegisterRequest } from "../types/index.js";
 import { prisma } from "../utils/prisma.js";
 import bcrypt from "bcrypt";
+import type { Prisma } from "@prisma/client";
+
+const publicUserSelect = {
+  id: true,
+  firstName: true,
+  lastName: true,
+  email: true,
+  cpf: true,
+  birthDate: true,
+  phone: true,
+  createdAt: true,
+  updatedAt: true,
+  role: true,
+} satisfies Prisma.UserSelect;
 
 export const registerUser = async (payload: RegisterRequest) => {
   const existingUser = await prisma.user.findUnique({
@@ -26,6 +40,7 @@ export const registerUser = async (payload: RegisterRequest) => {
       phone: payload.phone,
       role: "USER",
     },
+    select: publicUserSelect,
   });
 
   return newUser;
@@ -34,9 +49,13 @@ export const registerUser = async (payload: RegisterRequest) => {
 export const loginUser = async (data: AuthRequest) => {
   const user = await prisma.user.findUnique({
     where: {
-      email: data.email
-    }
-  })
+      email: data.email,
+    },
+    select: {
+      ...publicUserSelect,
+      password: true,
+    },
+  });
 
   if(!user) {
     throw new Error("Usuário não encontrado.");
@@ -48,5 +67,6 @@ export const loginUser = async (data: AuthRequest) => {
     throw new Error("Senha inválida.");
   }
 
-  return user;
-}
+  const { password, ...userWithoutPassword } = user;
+  return userWithoutPassword;
+};

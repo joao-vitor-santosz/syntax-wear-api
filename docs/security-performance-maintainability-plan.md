@@ -24,10 +24,9 @@
   - `products.routes.ts`: POST, PUT, DELETE
   - `categories.routes.ts`: POST, PUT, DELETE
 
-### 1.3 **SENHAS RETORNADAS NA RESPOSTA**
-- ✅ `auth.service.ts` removendo campo `password` via:
-  - `select` específico em `registerUser` (não inclui password)
-  - Destructuring em `loginUser` (`const { password, ...userWithoutPassword } = user`)
+### 1.3 **SENHAS RETORNADAS NA RESPOSTA** ✅ **RESOLVIDO**
+- `registerUser` seleciona explicitamente os campos públicos e não busca o campo `password`.
+- `loginUser` usa o hash apenas para validar a senha e o remove do objeto retornado.
 
 ### 3.3 **LOGS COM INFORMAÇÕES SENSÍVEIS**
 - ✅ Logger configurado com serializers para ocultar body e headers
@@ -55,50 +54,11 @@
 
 ---
 
-### 1.3 **SENHAS RETORNADAS NA RESPOSTA** ⚠️ **ALTO**
+### 1.3 **SENHAS RETORNADAS NA RESPOSTA** ✅ **RESOLVIDO**
 
-**Arquivo:** `src/services/auth.service.ts` (linhas 30, 46)
+**Arquivo:** `src/services/auth.service.ts`
 
-**Descrição:** As funções `registerUser` e `authenticateUser` retornam o objeto `user` **completo**, incluindo o hash bcrypt da senha:
-
-```typescript
-return newUser; // ❌ Inclui campo password com hash bcrypt
-return user; // ❌ Inclui campo password com hash bcrypt
-```
-
-Isso é enviado ao cliente em `auth.controller.ts`:
-```typescript
-reply.status(201).send({ user, token }); // ❌ Expõe hash da senha
-```
-
-**Risco:**
-- Hashes bcrypt podem ser atacados offline (rainbow tables, força bruta)
-- Exposição desnecessária de dados sensíveis
-
-**Ação necessária:**
-```typescript
-// auth.service.ts
-export const registerUser = async (payload: RegisterRequest) => {
-  // ... código de criação ...
-  
-  const { password, ...userWithoutPassword } = newUser;
-  return userWithoutPassword;
-};
-
-// Ou usar Prisma select:
-const newUser = await prisma.user.create({
-  data: { ... },
-  select: {
-    id: true,
-    firstName: true,
-    lastName: true,
-    email: true,
-    role: true,
-    createdAt: true
-    // ❌ NÃO incluir password
-  }
-});
-```
+**Implementado:** `registerUser` seleciona explicitamente os campos de usuário sem consultar `password`. `loginUser` consulta o hash somente para validar a senha e retorna o usuário sem esse campo. Assim, os controllers não incluem o hash nas respostas de cadastro ou login.
 
 ---
 
@@ -805,9 +765,9 @@ npm audit fix
 - [ ] **1.4** Implementar autorização por `userId` em `orders.service.ts`
 
 #### Dia 5: Correção de Dados Sensíveis
-- [ ] **1.3** Remover campo `password` de `registerUser` em `auth.service.ts`
-- [ ] **1.3** Remover campo `password` de `authenticateUser` em `auth.service.ts`
-- [ ] **1.3** Testar endpoints `/auth/register` e `/auth/signin`
+- [x] **1.3** Remover campo `password` do retorno de `registerUser` em `auth.service.ts`
+- [x] **1.3** Remover campo `password` do retorno de `loginUser` em `auth.service.ts`
+- [x] **1.3** Validar que as respostas dos endpoints de cadastro e login não incluem `password`
 
 ---
 
