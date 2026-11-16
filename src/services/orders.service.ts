@@ -72,7 +72,6 @@ export const getOrders = async (userId: number, filters: OrderFilters) => {
     const [orders, total] = await Promise.all([
       prisma.order.findMany({
         where,
-        include: { items: true },
         skip,
         take,
         orderBy: { createdAt: "desc" },

@@ -25,7 +25,9 @@
   },
   "homepage": "https://github.com/joao-vitor-santosz/syntax-wear-api#readme",
   "dependencies": {
+    "@fastify/cookie": "^11.1.5",
     "@fastify/cors": "^11.3.0",
+    "@fastify/csrf-protection": "^8.0.2",
     "@fastify/helmet": "^13.1.1",
     "@fastify/jwt": "^10.2.2",
     "@fastify/swagger": "^9.9.0",

@@ -383,16 +383,13 @@ street: z.string().min(1).max(200).trim(),
 
 ### 3.5 **FALTA DE PROTEÇÃO CSRF** ⚠️ **MÉDIO**
 
-**Descrição:** Não há implementação de tokens CSRF para operações de estado mutável (POST, PUT, DELETE).
+**Descrição:** A API autentica com JWT no cabeçalho `Authorization: Bearer`, que navegadores não enviam automaticamente em requisições cross-site. Portanto, o fluxo atual não está sujeito ao CSRF clássico baseado em cookies. Ainda assim, a origem das requisições mutáveis deve ser validada como defesa em profundidade, especialmente antes de uma futura adoção de autenticação por cookie.
 
-**Risco:** Atacante pode forçar usuário autenticado a executar ações não intencionais (criar pedido, deletar produto).
+**Implementação atual:** Para métodos diferentes de `GET`, `HEAD` e `OPTIONS`, se a requisição incluir `Origin` (ou, na ausência dele, `Referer`), sua origem precisa estar na lista confiável. As origens locais da própria API (`localhost` e `127.0.0.1` na porta configurada) são confiáveis para permitir o teste no Scalar; outras origens de frontend devem ser configuradas em `CORS_ORIGINS`, separadas por vírgulas. CORS e a validação de origem usam a mesma lista. Requisições sem ambos os cabeçalhos continuam permitidas para clientes não-browser que autenticam via Bearer.
 
-**Ação necessária:**
-```typescript
-import csrf from '@fastify/csrf-protection';
+**Tokens CSRF para autenticação futura por cookie:** O endpoint `GET /auth/csrf-token` é disponibilizado quando `CSRF_PROTECTION_ENABLED=true`. Ele define um cookie secreto assinado, `HttpOnly`, com `SameSite` configurável e `Secure` em produção, e retorna o token no corpo JSON sem permitir cache. O navegador deve preservar o cookie e enviar o token no cabeçalho `X-CSRF-Token` em cada operação mutável. A validação usa `@fastify/csrf-protection`; os tokens são vinculados ao Bearer atual ou ao cookie JWT futuro `access_token`, para reduzir ataques de fixação/cookie tossing. Ative usando três segredos aleatórios e distintos de pelo menos 32 bytes: `CSRF_COOKIE_SECRET`, `CSRF_USER_INFO_HMAC_KEY` e `JWT_SECRET`. O valor padrão de `CSRF_PROTECTION_ENABLED` é `false` para preservar o fluxo Bearer atual.
 
-fastify.register(csrf);
-```
+**Ativação:** Configure `CSRF_PROTECTION_ENABLED=true` e os três segredos fortes antes de habilitar autenticação por cookie. Com a proteção ativa, todas as operações diferentes de `GET`, `HEAD` e `OPTIONS` exigem token, inclusive login/cadastro. O frontend deve obter um token antes do login e obter outro após a autenticação ou renovação do JWT, enviar cookies com credenciais e incluir `X-CSRF-Token`. Para frontends em outro site, configure `CSRF_COOKIE_SAME_SITE=none` e use HTTPS. Esta etapa prepara a validação CSRF, mas não migra o JWT para cookie nem altera o transporte de autenticação.
 
 ---
 
@@ -485,9 +482,8 @@ fastify.register(compress, {
 ### 5.1 **USO EXCESSIVO DE `any`** ⚠️ **ALTO**
 
 **Arquivos:**
-- `src/services/products.service.ts` (linha 7)
-- `src/services/categories.service.ts` (linha 6)
-- `src/services/orders.service.ts` (linhas 9, 125, 173)
+- `src/services/products.service.ts` (linha 20)
+- `src/services/categories.service.ts` (linha 12)
 
 **Descrição:**
 ```typescript
@@ -519,14 +515,11 @@ shippingAddress: data.shippingAddress as Prisma.JsonObject,
 - `src/controllers/products.controller.ts`
 - `src/controllers/categories.controller.ts`
 
-**Descrição:** Lógica de geração de slug é duplicada:
+**Descrição:** A lógica de geração de slug estava duplicada nas operações de criação e atualização de produtos e categorias.
 
 ```typescript
-// products.controller.ts (linha 13)
-body.slug = slugify(body.name, { lower: true, strict: true, locale: "pt" });
-
-// categories.controller.ts (linha 12)
-body.slug = slugify(body.name, { lower: true, strict: true, locale: "pt" });
+// Antes: cada controller repetia a mesma configuração
+slugify(name, { lower: true, strict: true, locale: "pt" });
 ```
 
 **Impacto:** Alterações precisam ser replicadas em múltiplos lugares.
@@ -538,9 +531,11 @@ export function generateSlug(text: string): string {
   return slugify(text, { lower: true, strict: true, locale: "pt" });
 }
 
-// Usar em controllers
+// Usar na criação e atualização de produtos e categorias
 body.slug = generateSlug(body.name);
 ```
+
+**Implementação:** A função compartilhada está em `src/utils/slug.ts` e é usada pelos controllers de produtos e categorias.
 
 ---
 

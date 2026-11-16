@@ -1,7 +1,40 @@
 import { FastifyInstance } from "fastify";
 import { login, register } from "../controllers/auth.controller.js";
+import {
+  csrfProtectionEnabled,
+  getCsrfUserInfo,
+} from "../middlewares/csrf.middleware.js";
 
 export async function authRoutes(fastify: FastifyInstance) {
+  if (csrfProtectionEnabled) {
+    fastify.get(
+      "/csrf-token",
+      {
+        schema: {
+          tags: ["Auth"],
+          description:
+            "Gera um token CSRF para operações mutáveis feitas pelo navegador",
+          response: {
+            200: {
+              type: "object",
+              properties: {
+                csrfToken: { type: "string" },
+              },
+              required: ["csrfToken"],
+            },
+          },
+        },
+      },
+      async (request, reply) => {
+        const csrfToken = reply.generateCsrf({
+          userInfo: getCsrfUserInfo(request),
+        });
+        reply.header("Cache-Control", "no-store");
+        return { csrfToken };
+      },
+    );
+  }
+
   fastify.post(
     "/register",
     {

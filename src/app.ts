@@ -4,6 +4,8 @@
 import Fastify, { FastifyError } from "fastify";
 import "dotenv/config";
 import cors from "@fastify/cors";
+import cookie from "@fastify/cookie";
+import csrf from "@fastify/csrf-protection";
 import helmet from "@fastify/helmet";
 import { productRoutes } from "./routes/products.routes.js";
 import swagger from "@fastify/swagger";
@@ -13,23 +15,117 @@ import { authRoutes } from "./routes/auth.routes.js";
 import { categoryRoutes } from "./routes/categories.routes.js";
 import { orderRoutes } from "./routes/orders.routes.js";
 import { errorHandler } from "./middlewares/error.middleware.js";
+import {
+  csrfCookieSameSite,
+  csrfOriginProtection,
+  csrfProtectionEnabled,
+  getCsrfUserInfo,
+  isSafeMethod,
+  isTrustedOrigin,
+} from "./middlewares/csrf.middleware.js";
 
 const PORT = parseInt(process.env.PORT ?? "3000");
 
+const getCsrfSecrets = () => {
+  const cookieSecret = process.env.CSRF_COOKIE_SECRET;
+  const userInfoHmacKey = process.env.CSRF_USER_INFO_HMAC_KEY;
+  const jwtSecret = process.env.JWT_SECRET;
+
+  if (!cookieSecret || !userInfoHmacKey || !jwtSecret) {
+    throw new Error(
+      "CSRF_COOKIE_SECRET, CSRF_USER_INFO_HMAC_KEY e JWT_SECRET são obrigatórios quando a proteção CSRF está ativada",
+    );
+  }
+
+  const secrets = [cookieSecret, userInfoHmacKey, jwtSecret];
+  if (
+    secrets.some((secret) => Buffer.byteLength(secret) < 32) ||
+    new Set(secrets).size !== secrets.length
+  ) {
+    throw new Error(
+      "CSRF_COOKIE_SECRET, CSRF_USER_INFO_HMAC_KEY e JWT_SECRET devem ser segredos distintos de pelo menos 32 bytes",
+    );
+  }
+
+  return { cookieSecret, userInfoHmacKey };
+};
+
+const csrfSecrets = csrfProtectionEnabled
+  ? getCsrfSecrets()
+  : undefined;
+
 const fastify = Fastify({
-  logger: true,
-});
+  logger: {
+    level: process.env.LOG_LEVEL || 'info',
+    serializers: {
+      req(request) {
+        return {
+          method: request.method,
+          url: request.url,
+        };
+      },
+      res(reply) {
+        return {
+          statusCode: reply.statusCode,
+        };
+      }
+    }
+}});
 
 fastify.register(jwt, {
   secret: process.env.JWT_SECRET!,
 });
 
 fastify.register(cors, {
-  origin: true,
+  origin: (origin, callback) => {
+    callback(null, !origin || isTrustedOrigin(origin));
+  },
   credentials: true,
   methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization"],
+  allowedHeaders: ["Content-Type", "Authorization", "X-CSRF-Token"],
 });
+
+fastify.register(
+  cookie,
+  csrfSecrets ? { secret: csrfSecrets.cookieSecret } : {},
+);
+fastify.register(csrf, {
+  sessionPlugin: "@fastify/cookie",
+  cookieOpts: {
+    signed: csrfProtectionEnabled,
+    httpOnly: true,
+    secure:
+      process.env.NODE_ENV === "production" ||
+      csrfCookieSameSite === "none",
+    sameSite: csrfCookieSameSite,
+    path: "/",
+  },
+  getToken: (request) => {
+    const token = request.headers["x-csrf-token"];
+    return typeof token === "string" ? token : undefined;
+  },
+  ...(csrfSecrets
+    ? {
+        getUserInfo: getCsrfUserInfo,
+        csrfOpts: {
+          userInfo: true,
+          hmacKey: csrfSecrets.userInfoHmacKey,
+        },
+      }
+    : {}),
+});
+
+fastify.addHook("onRequest", csrfOriginProtection);
+if (csrfProtectionEnabled) {
+  fastify.addHook("onRequest", (request, reply, done) => {
+    if (isSafeMethod(request.method)) {
+      done();
+      return;
+    }
+
+    fastify.csrfProtection(request, reply, done);
+  });
+}
 
 fastify.register(helmet, {
   contentSecurityPolicy: false,
