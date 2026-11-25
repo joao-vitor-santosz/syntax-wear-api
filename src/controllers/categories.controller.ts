@@ -43,8 +43,11 @@ export const createNewCategory = async (
 ) => {
   const body = {
     ...request.body,
-    slug: generateSlug(request.body.name),
   };
+
+  if (typeof body.name === "string" && body.name.trim()) {
+    body.slug = generateSlug(body.name);
+  }
 
   const validatedCategory = createCategorySchema.parse(body);
   const category = await createCategory(validatedCategory);
