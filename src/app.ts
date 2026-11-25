@@ -1,7 +1,4 @@
-// Require the framework and instantiate it
-
-// ESM
-import Fastify, { FastifyError } from "fastify";
+import Fastify from "fastify";
 import "dotenv/config";
 import cors from "@fastify/cors";
 import cookie from "@fastify/cookie";
@@ -23,8 +20,6 @@ import {
   isSafeMethod,
   isTrustedOrigin,
 } from "./middlewares/csrf.middleware.js";
-
-const PORT = parseInt(process.env.PORT ?? "3000");
 
 const getCsrfSecrets = () => {
   const cookieSecret = process.env.CSRF_COOKIE_SECRET;
@@ -139,13 +134,7 @@ fastify.register(swagger, {
       description: "API para o e-commerce Syntax Wear",
       version: "1.0.0",
     },
-    servers: [
-      {
-        url: `http://localhost:${PORT}`,
-        description: "Servidor de desenvolvimento",
-      },
-    ],
-
+    servers: [],
     components: {
       securitySchemes: {
         bearerAuth: {
@@ -188,14 +177,5 @@ fastify.get("/health", async (request, reply) => {
 });
 
 fastify.setErrorHandler(errorHandler);
-
-// Run the server!
-fastify.listen({ port: PORT }, function (err, address) {
-  if (err) {
-    fastify.log.error(err);
-    process.exit(1);
-  }
-  // Server is now listening on ${address}
-});
 
 export default fastify;
